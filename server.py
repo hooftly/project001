@@ -2,37 +2,38 @@ import socket
 import threading
 import signal
 import sys
-import csv
-import os
+import sqlite3
 import hashlib
 
 # Global variable to track whether the server should continue running
 running = True
 
-# Define the database file path
-DATABASE_FILE = "user_database.csv"
-
-# Check if the database file exists, create it if not
-if not os.path.isfile(DATABASE_FILE):
-    with open(DATABASE_FILE, mode='w', newline='') as file:
-        csv_writer = csv.writer(file)
-        csv_writer.writerow(['username', 'password'])  # Write header row
+# Create the SQLite database and table if they don't exist
+conn = sqlite3.connect('user_database.db')
+c = conn.cursor()
+c.execute('''
+          CREATE TABLE IF NOT EXISTS users
+          (id INTEGER PRIMARY KEY,
+           username TEXT,
+           password TEXT)
+          ''')
+conn.commit()
+conn.close()
 
 def load_user_database():
-    user_accounts = {}
-    with open(DATABASE_FILE, mode='r') as file:
-        csv_reader = csv.DictReader(file)
-        for row in csv_reader:
-            user_accounts[row['username']] = row['password']
+    conn = sqlite3.connect('user_database.db')
+    c = conn.cursor()
+    c.execute('SELECT * FROM users')
+    user_accounts = {row[1]: row[2] for row in c.fetchall()}
+    conn.close()
     return user_accounts
 
-def save_user_database(user_accounts):
-    with open(DATABASE_FILE, mode='w', newline='') as file:
-        fieldnames = ['username', 'password']
-        csv_writer = csv.DictWriter(file, fieldnames=fieldnames)
-        csv_writer.writeheader()
-        for username, password in user_accounts.items():
-            csv_writer.writerow({'username': username, 'password': password})
+def save_user(username, password):
+    conn = sqlite3.connect('user_database.db')
+    c = conn.cursor()
+    c.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
+    conn.commit()
+    conn.close()
 
 def hash_password(password):
     # Hash the password using SHA-256
@@ -69,7 +70,7 @@ def handle_client(client_socket, client_address):
 
                 hashed_password = hash_password(password)
                 user_accounts[username] = hashed_password
-                save_user_database(user_accounts)
+                save_user(username, hashed_password)
 
                 client_socket.sendall(b'\x01')  # 0x01 indicates registration successful
 
