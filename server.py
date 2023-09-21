@@ -4,6 +4,7 @@ import signal
 import sys
 import csv
 import os
+import hashlib
 
 # Global variable to track whether the server should continue running
 running = True
@@ -32,6 +33,10 @@ def save_user_database(user_accounts):
         csv_writer.writeheader()
         for username, password in user_accounts.items():
             csv_writer.writerow({'username': username, 'password': password})
+
+def hash_password(password):
+    # Hash the password using SHA-256
+    return hashlib.sha256(password.encode()).hexdigest()
 
 user_accounts = load_user_database()
 
@@ -62,7 +67,8 @@ def handle_client(client_socket, client_address):
                 client_socket.sendall(b'\x01')  # 0x01 indicates enter password
                 password = client_socket.recv(1024).decode().strip()
 
-                user_accounts[username] = password
+                hashed_password = hash_password(password)
+                user_accounts[username] = hashed_password
                 save_user_database(user_accounts)
 
                 client_socket.sendall(b'\x01')  # 0x01 indicates registration successful
@@ -82,7 +88,9 @@ def handle_client(client_socket, client_address):
                 client_socket.sendall(b'\x01')  # 0x01 indicates enter password
                 password = client_socket.recv(1024).decode().strip()
 
-                if username in user_accounts and user_accounts[username] == password:
+                hashed_password = hash_password(password)
+
+                if username in user_accounts and user_accounts[username] == hashed_password:
                     client_socket.sendall(b'\x01')  # 0x01 indicates successful login
 
                     while True:
