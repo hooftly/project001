@@ -6,19 +6,56 @@ import sys
 # Global variable to track whether the server should continue running
 running = True
 
+# Dictionary to store user accounts (username: User object)
+user_accounts = {}
+
+class User:
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
+
 def handle_client(client_socket, client_address):
+    global user_accounts
+
     print(f'Connection from {client_address}')
+
+    # Send a welcome message and prompt for registration
+    client_socket.sendall('Welcome to the server!'.encode())
+    client_socket.sendall('Register or Login? (Type "register" or "login"): '.encode())
 
     while running:
         # Receive data from the client
-        data = client_socket.recv(1024)
+        data = client_socket.recv(1024).decode().strip()
+
         if not data:
             break
-        print(f'Received: {data.decode()}')
 
-        # Send a response back to the client
-        response = 'Hello, client! Thanks for connecting.'
-        client_socket.sendall(response.encode())
+        if data.lower() == 'register':
+            # Register a new user
+            client_socket.sendall('Enter username: '.encode())
+            username = client_socket.recv(1024).decode().strip()
+
+            client_socket.sendall('Enter password: '.encode())
+            password = client_socket.recv(1024).decode().strip()
+
+            user_accounts[username] = User(username, password)
+            client_socket.sendall(f'Registration successful! You are now logged in as {username}.'.encode())
+
+        elif data.lower() == 'login':
+            # Login an existing user
+            client_socket.sendall('Enter username: '.encode())
+            username = client_socket.recv(1024).decode().strip()
+
+            client_socket.sendall('Enter password: '.encode())
+            password = client_socket.recv(1024).decode().strip()
+
+            if username in user_accounts and user_accounts[username].password == password:
+                client_socket.sendall(f'Welcome, {username}! You are logged in.'.encode())
+            else:
+                client_socket.sendall('Invalid username or password. Please try again.'.encode())
+
+        else:
+            client_socket.sendall('Invalid input. Type "register" or "login": '.encode())
 
     # Close the client socket
     client_socket.close()

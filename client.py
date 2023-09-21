@@ -12,16 +12,38 @@ def start_client():
         # Connect to the server
         client_socket.connect(server_address)
 
-        while True:
-            # Send a message to the server
-            message = input('Enter a message to send to the server (or type "exit" to quit): ')
-            if message.lower() == 'exit':
-                break
-            client_socket.sendall(message.encode())
+        # Receive and print the welcome message
+        welcome_message = client_socket.recv(1024).decode()
+        print(welcome_message)
 
-            # Receive and print the server's response
-            response = client_socket.recv(1024)
-            print(f'Received from server: {response.decode()}')
+        while True:
+            # Prompt for registration or login
+            action = input().strip()
+            client_socket.sendall(action.encode())
+
+            response = client_socket.recv(1024).decode()
+            print(response)
+
+            if response.startswith('Enter username'):
+                username = input().strip()
+                client_socket.sendall(username.encode())
+
+                password = input().strip()
+                client_socket.sendall(password.encode())
+
+                registration_response = client_socket.recv(1024).decode()
+                print(registration_response)
+
+            elif response.startswith('Enter username'):
+                username = input().strip()
+                client_socket.sendall(username.encode())
+
+                password = input().strip()
+                client_socket.sendall(password.encode())
+
+                login_response = client_socket.recv(1024).decode()
+                print(login_response)
+
     finally:
         # Close the client socket
         client_socket.close()
